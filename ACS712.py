@@ -1,47 +1,30 @@
 import time
-import machine
-import math
 
 class ACS712:
-    def __init__(self, pin, mode='AC', sensitivity=0.185):
-        self.pin = machine.ADC(pin)
-        self.mode = mode
-        self.sensitivity = sensitivity
-        self.offset = self.calibrate_midpoint()
+    def __init__(self, pin):
+        self.pin = pin
 
-    def read_voltage(self):
-        raw_value = self.pin.read()
-        voltage = (raw_value / 1024) * 3.3
-        return voltage
-
-    def calibrate_midpoint(self):
-        samples = 1000
-        total = 0
+    def read_current(self, samples=100):
+        sum_squares = 0
         for _ in range(samples):
-            total += self.read_voltage()
-            time.sleep(0.01)
-        return total / samples
+            current_reading = self.get_current_reading()  # Assuming a function that reads current
+            sum_squares += current_reading ** 2
+        return (sum_squares / samples) ** 0.5
 
-    def read_current(self):
-        voltage = self.read_voltage() - self.offset
-        current = voltage / self.sensitivity
-        return current
+    def get_current_reading(self):
+        # Implement the method to get current reading from the hardware pin
+        pass
 
-    def average_current(self, samples=10):
-        total_current = 0
-        for _ in range(samples):
-            total_current += self.read_current()
-            time.sleep(0.1)
-        return total_current / samples
+    def improved_ac_current_measure(self):
+        start_time = time.ticks_ms()
+        previous_time = start_time
+        measurements = []
 
-    def read_ac_dc(self, duration=1):
-        if self.mode == 'AC':
-            samples = int(duration * 1000)  # 1000 samples per second
-            total = 0
-            for _ in range(samples):
-                total += self.read_current() ** 2
-                time.sleep(0.001)
-            rms_current = math.sqrt(total / samples)
-            return rms_current
-        else:
-            return self.read_current()
+        while time.ticks_diff(time.ticks_ms(), start_time) < 10000:  # Sample for 10 seconds
+            elapsed = time.ticks_diff(time.ticks_ms(), previous_time)
+            if elapsed >= 100:  # Read every 100 ms
+                current = self.read_current()
+                measurements.append(current)
+                previous_time = time.ticks_ms()
+
+        return measurements
